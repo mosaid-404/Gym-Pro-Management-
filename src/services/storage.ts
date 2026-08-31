@@ -1,4 +1,5 @@
 import { GymSettings, Member, HallAttendance, GuestInvitation, AuthSession, GymServiceDefinition } from '../types';
+import { db, doc, setDoc, onSnapshot } from '../firebase';
 
 const STORAGE_KEYS = {
   SETTINGS: 'gym_pro_settings_v1',
@@ -302,6 +303,13 @@ export const storage = {
   saveSettings(settings: GymSettings) {
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
     notifyDataChanged(STORAGE_KEYS.SETTINGS);
+    try {
+      setDoc(doc(db, 'gym_cloud', 'settings'), settings).catch((err) =>
+        console.warn('Cloud save settings err:', err)
+      );
+    } catch (e) {
+      console.warn('Firestore setDoc settings error:', e);
+    }
   },
 
   // Admin Password
@@ -309,8 +317,16 @@ export const storage = {
     return localStorage.getItem(STORAGE_KEYS.ADMIN_PASSWORD) || 'admin123';
   },
   saveAdminPassword(newPass: string) {
-    localStorage.setItem(STORAGE_KEYS.ADMIN_PASSWORD, newPass.trim());
+    const cleanPass = newPass.trim();
+    localStorage.setItem(STORAGE_KEYS.ADMIN_PASSWORD, cleanPass);
     notifyDataChanged(STORAGE_KEYS.ADMIN_PASSWORD);
+    try {
+      setDoc(doc(db, 'gym_cloud', 'security'), { adminPassword: cleanPass }).catch((err) =>
+        console.warn('Cloud save security err:', err)
+      );
+    } catch (e) {
+      console.warn('Firestore setDoc security error:', e);
+    }
   },
 
   // Members
@@ -347,6 +363,13 @@ export const storage = {
   saveMembers(members: Member[]) {
     localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify(members));
     notifyDataChanged(STORAGE_KEYS.MEMBERS);
+    try {
+      setDoc(doc(db, 'gym_cloud', 'members'), { list: members }).catch((err) =>
+        console.warn('Cloud save members err:', err)
+      );
+    } catch (e) {
+      console.warn('Firestore setDoc members error:', e);
+    }
   },
   addMember(memberData: Omit<Member, 'id' | 'password' | 'createdAt'>): Member {
     const members = this.getMembers();
@@ -429,6 +452,13 @@ export const storage = {
   saveAttendance(list: HallAttendance[]) {
     localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify(list));
     notifyDataChanged(STORAGE_KEYS.ATTENDANCE);
+    try {
+      setDoc(doc(db, 'gym_cloud', 'attendance'), { list }).catch((err) =>
+        console.warn('Cloud save attendance err:', err)
+      );
+    } catch (e) {
+      console.warn('Firestore setDoc attendance error:', e);
+    }
   },
 
   getCurrentInsideCount(): number {
@@ -522,6 +552,13 @@ export const storage = {
   saveGuestInvitations(list: GuestInvitation[]) {
     localStorage.setItem(STORAGE_KEYS.GUEST_INVITES, JSON.stringify(list));
     notifyDataChanged(STORAGE_KEYS.GUEST_INVITES);
+    try {
+      setDoc(doc(db, 'gym_cloud', 'invitations'), { list }).catch((err) =>
+        console.warn('Cloud save invitations err:', err)
+      );
+    } catch (e) {
+      console.warn('Firestore setDoc invitations error:', e);
+    }
   },
   createGuestInvite(memberId: string, guestName: string, guestPhone: string): { success: boolean; message: string; invite?: GuestInvitation } {
     const member = this.getMembers().find((m) => m.id === memberId);
@@ -611,3 +648,107 @@ export const storage = {
     this.saveGuestInvitations(DEFAULT_GUEST_INVITES);
   }
 };
+
+let isCloudSyncInitialized = false;
+
+export const initCloudSync = () => {
+  if (isCloudSyncInitialized || typeof window === 'undefined') return;
+  isCloudSyncInitialized = true;
+
+  try {
+    // 1. Settings real-time sync
+    onSnapshot(
+      doc(db, 'gym_cloud', 'settings'),
+      (snap) => {
+        if (snap.exists()) {
+          const cloudSettings = snap.data() as GymSettings;
+          localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(cloudSettings));
+          notifyDataChanged(STORAGE_KEYS.SETTINGS);
+        } else {
+          // Seed cloud if empty
+          const current = storage.getSettings();
+          setDoc(doc(db, 'gym_cloud', 'settings'), current).catch(() => {});
+        }
+      },
+      (err) => console.warn('Cloud sync listener (settings) notice:', err)
+    );
+
+    // 2. Members real-time sync
+    onSnapshot(
+      doc(db, 'gym_cloud', 'members'),
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (Array.isArray(data.list)) {
+            localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify(data.list));
+            notifyDataChanged(STORAGE_KEYS.MEMBERS);
+          }
+        } else {
+          const current = storage.getMembers();
+          setDoc(doc(db, 'gym_cloud', 'members'), { list: current }).catch(() => {});
+        }
+      },
+      (err) => console.warn('Cloud sync listener (members) notice:', err)
+    );
+
+    // 3. Attendance real-time sync
+    onSnapshot(
+      doc(db, 'gym_cloud', 'attendance'),
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (Array.isArray(data.list)) {
+            localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify(data.list));
+            notifyDataChanged(STORAGE_KEYS.ATTENDANCE);
+          }
+        } else {
+          const current = storage.getAttendance();
+          setDoc(doc(db, 'gym_cloud', 'attendance'), { list: current }).catch(() => {});
+        }
+      },
+      (err) => console.warn('Cloud sync listener (attendance) notice:', err)
+    );
+
+    // 4. Guest Invitations real-time sync
+    onSnapshot(
+      doc(db, 'gym_cloud', 'invitations'),
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (Array.isArray(data.list)) {
+            localStorage.setItem(STORAGE_KEYS.GUEST_INVITES, JSON.stringify(data.list));
+            notifyDataChanged(STORAGE_KEYS.GUEST_INVITES);
+          }
+        } else {
+          const current = storage.getGuestInvitations();
+          setDoc(doc(db, 'gym_cloud', 'invitations'), { list: current }).catch(() => {});
+        }
+      },
+      (err) => console.warn('Cloud sync listener (invitations) notice:', err)
+    );
+
+    // 5. Security (Admin Password) real-time sync
+    onSnapshot(
+      doc(db, 'gym_cloud', 'security'),
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data.adminPassword) {
+            localStorage.setItem(STORAGE_KEYS.ADMIN_PASSWORD, data.adminPassword);
+            notifyDataChanged(STORAGE_KEYS.ADMIN_PASSWORD);
+          }
+        } else {
+          const currentPass = storage.getAdminPassword();
+          setDoc(doc(db, 'gym_cloud', 'security'), { adminPassword: currentPass }).catch(() => {});
+        }
+      },
+      (err) => console.warn('Cloud sync listener (security) notice:', err)
+    );
+  } catch (e) {
+    console.error('Error starting Cloud sync:', e);
+  }
+};
+
+// Start cloud sync immediately
+initCloudSync();
+
