@@ -27,7 +27,9 @@ export default function App() {
 
     // Refresh member in session if logged in as member
     if (session?.role === 'member' && session.member) {
-      const fresh = storage.getMembers().find((m) => m.id === session.member!.id);
+      const fresh = storage.getMembers().find(
+        (m) => m.id === session.member!.id || m.phone === session.member!.phone
+      );
       if (fresh) {
         const updatedSession: AuthSession = { ...session, member: fresh };
         setSession(updatedSession);
@@ -36,11 +38,26 @@ export default function App() {
     }
   };
 
+  // Real-time listener for local storage changes across tabs and within the app
+  useEffect(() => {
+    const handleDataChange = () => {
+      refreshAll();
+    };
+
+    window.addEventListener('storage', handleDataChange);
+    window.addEventListener('gym_data_changed', handleDataChange);
+
+    return () => {
+      window.removeEventListener('storage', handleDataChange);
+      window.removeEventListener('gym_data_changed', handleDataChange);
+    };
+  }, [session]);
+
   // Periodic polling for hall count
   useEffect(() => {
     const interval = setInterval(() => {
       setInHallCount(storage.getCurrentInsideCount());
-    }, 5000);
+    }, 4000);
     return () => clearInterval(interval);
   }, []);
 

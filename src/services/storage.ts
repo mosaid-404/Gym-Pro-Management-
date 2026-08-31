@@ -262,6 +262,29 @@ const DEFAULT_GUEST_INVITES: GuestInvitation[] = [
 // Auto-checkout limit in milliseconds (1.5 hours = 90 minutes)
 const AUTO_CHECKOUT_DURATION_MS = 90 * 60 * 1000;
 
+// Helper to normalize arabic/hindi digits to standard english digits
+export const normalizeDigits = (val: string = ''): string => {
+  const arabicHindiDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+  const easternPersianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+  let res = val.trim();
+  for (let i = 0; i < 10; i++) {
+    res = res.replace(new RegExp(arabicHindiDigits[i], 'g'), String(i));
+    res = res.replace(new RegExp(easternPersianDigits[i], 'g'), String(i));
+  }
+  return res;
+};
+
+export const normalizePhoneNumber = (phone: string = ''): string => {
+  return normalizeDigits(phone).replace(/[\s\-\+\(\)]/g, '');
+};
+
+// Dispatch custom event to notify all components and tabs instantly
+const notifyDataChanged = (key?: string) => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('gym_data_changed', { detail: { key } }));
+  }
+};
+
 export const storage = {
   // Settings
   getSettings(): GymSettings {
@@ -278,6 +301,7 @@ export const storage = {
   },
   saveSettings(settings: GymSettings) {
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
+    notifyDataChanged(STORAGE_KEYS.SETTINGS);
   },
 
   // Admin Password
@@ -285,7 +309,8 @@ export const storage = {
     return localStorage.getItem(STORAGE_KEYS.ADMIN_PASSWORD) || 'admin123';
   },
   saveAdminPassword(newPass: string) {
-    localStorage.setItem(STORAGE_KEYS.ADMIN_PASSWORD, newPass);
+    localStorage.setItem(STORAGE_KEYS.ADMIN_PASSWORD, newPass.trim());
+    notifyDataChanged(STORAGE_KEYS.ADMIN_PASSWORD);
   },
 
   // Members
@@ -321,13 +346,16 @@ export const storage = {
   },
   saveMembers(members: Member[]) {
     localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify(members));
+    notifyDataChanged(STORAGE_KEYS.MEMBERS);
   },
   addMember(memberData: Omit<Member, 'id' | 'password' | 'createdAt'>): Member {
     const members = this.getMembers();
+    const cleanPhone = normalizePhoneNumber(memberData.phone);
     const newMember: Member = {
       ...memberData,
+      phone: cleanPhone || memberData.phone.trim(),
       id: 'mem_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-      password: memberData.phone.trim(),
+      password: cleanPhone || memberData.phone.trim(),
       createdAt: formatDate(new Date()),
     };
     members.unshift(newMember);
@@ -338,7 +366,16 @@ export const storage = {
     const members = this.getMembers();
     const idx = members.findIndex((m) => m.id === id);
     if (idx === -1) return null;
-    members[idx] = { ...members[idx], ...updates };
+
+    const sanitizedUpdates = { ...updates };
+    if (sanitizedUpdates.phone) {
+      sanitizedUpdates.phone = normalizePhoneNumber(sanitizedUpdates.phone);
+    }
+    if (sanitizedUpdates.password) {
+      sanitizedUpdates.password = normalizeDigits(sanitizedUpdates.password).trim();
+    }
+
+    members[idx] = { ...members[idx], ...sanitizedUpdates };
     this.saveMembers(members);
     return members[idx];
   },
@@ -391,6 +428,7 @@ export const storage = {
 
   saveAttendance(list: HallAttendance[]) {
     localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify(list));
+    notifyDataChanged(STORAGE_KEYS.ATTENDANCE);
   },
 
   getCurrentInsideCount(): number {
@@ -483,6 +521,7 @@ export const storage = {
   },
   saveGuestInvitations(list: GuestInvitation[]) {
     localStorage.setItem(STORAGE_KEYS.GUEST_INVITES, JSON.stringify(list));
+    notifyDataChanged(STORAGE_KEYS.GUEST_INVITES);
   },
   createGuestInvite(memberId: string, guestName: string, guestPhone: string): { success: boolean; message: string; invite?: GuestInvitation } {
     const member = this.getMembers().find((m) => m.id === memberId);

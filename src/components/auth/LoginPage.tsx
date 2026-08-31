@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { User, Lock, ArrowLeft, AlertCircle, QrCode } from 'lucide-react';
 import { GymSettings, Member } from '../../types';
 import { GymLogo } from '../common/GymLogo';
-import { storage } from '../../services/storage';
+import { storage, normalizePhoneNumber, normalizeDigits } from '../../services/storage';
 
 interface LoginPageProps {
   settings: GymSettings;
@@ -27,25 +27,44 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     setIsLoading(true);
 
     setTimeout(() => {
-      const input = usernameOrPhone.trim();
-      const inputLower = input.toLowerCase();
-      const cleanPass = password.trim();
+      const rawInput = usernameOrPhone.trim();
+      const inputLower = rawInput.toLowerCase();
+      const cleanPhoneInput = normalizePhoneNumber(rawInput);
+      const cleanPass = normalizeDigits(password).trim();
 
       // 1. Check if admin credentials
-      const adminPass = storage.getAdminPassword();
-      const isAdminUsername = inputLower === 'admin' || inputLower === 'الادمن' || inputLower === 'مدير' || inputLower === 'الإدارة';
+      const adminPass = storage.getAdminPassword().trim();
+      const isAdminUsername =
+        inputLower === 'admin' ||
+        inputLower === 'الادمن' ||
+        inputLower === 'مدير' ||
+        inputLower === 'الإدارة' ||
+        inputLower === 'ادمن';
 
-      if (isAdminUsername && cleanPass === adminPass) {
+      if (isAdminUsername && (cleanPass === adminPass || password.trim() === adminPass)) {
         onLoginSuccess('admin', undefined, rememberMe);
         setIsLoading(false);
         return;
       }
 
-      // 2. Check if member credentials (by phone)
+      // 2. Check if member credentials (by phone number OR name)
       const members = storage.getMembers();
-      const foundMember = members.find(
-        (m) => (m.phone.trim() === input || m.phone.replace(/\s+/g, '') === input.replace(/\s+/g, '')) && m.password === cleanPass
-      );
+      const foundMember = members.find((m) => {
+        const memberCleanPhone = normalizePhoneNumber(m.phone);
+        const memberPass = normalizeDigits(m.password || m.phone).trim();
+
+        const phoneMatches =
+          (cleanPhoneInput && memberCleanPhone === cleanPhoneInput) ||
+          m.phone.trim() === rawInput ||
+          m.name.trim().toLowerCase() === rawInput.toLowerCase();
+
+        const passMatches =
+          cleanPass === memberPass ||
+          password.trim() === (m.password || '').trim() ||
+          cleanPass === memberCleanPhone;
+
+        return phoneMatches && passMatches;
+      });
 
       if (foundMember) {
         onLoginSuccess('member', foundMember, rememberMe);
@@ -57,18 +76,26 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       if (isAdminUsername && cleanPass !== adminPass) {
         setErrorMessage('كلمة المرور الخاصة بحساب الإدارة غير صحيحة.');
       } else {
-        const phoneExists = members.find(
-          (m) => m.phone.trim() === input || m.phone.replace(/\s+/g, '') === input.replace(/\s+/g, '')
-        );
+        const phoneExists = members.find((m) => {
+          const memberCleanPhone = normalizePhoneNumber(m.phone);
+          return (
+            (cleanPhoneInput && memberCleanPhone === cleanPhoneInput) ||
+            m.phone.trim() === rawInput ||
+            m.name.trim().toLowerCase() === rawInput.toLowerCase()
+          );
+        });
+
         if (phoneExists) {
-          setErrorMessage('كلمة المرور غير صحيحة.');
+          setErrorMessage(
+            `كلمة المرور غير صحيحة للمشترك (${phoneExists.name}). كلمة المرور الافتراضية هي رقم هاتفه: ${phoneExists.phone}`
+          );
         } else {
-          setErrorMessage('بيانات الدخول غير صحيحة. يرجى التأكد من اسم المستخدم أو رقم الهاتف وكلمة المرور.');
+          setErrorMessage('بيانات الدخول غير صحيحة. يرجى التأكد من رقم الهاتف أو اسم المستخدم وكلمة المرور.');
         }
       }
 
       setIsLoading(false);
-    }, 250);
+    }, 150);
   };
 
   return (
