@@ -180,14 +180,14 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
             </>
           )}
 
-          {/* Direct 1-Tap Simulation / Fast Check-in */}
+          {/* Direct 1-Tap Simulation / Fast Check-in (as fallback) */}
           <div className="w-full pt-4 border-t border-white/10 space-y-2">
             <button
-              onClick={() => triggerCheckInProcess('member_app')}
-              className="w-full bg-lime-400 hover:bg-lime-300 text-black font-black uppercase tracking-wider py-3 px-4 rounded-xl text-xs transition-all shadow-lg shadow-lime-400/20 flex items-center justify-center gap-2"
+              onClick={() => triggerCheckInProcess('qr_scanner')}
+              className="w-full bg-lime-400 hover:bg-lime-300 text-black font-black uppercase tracking-wider py-3 px-4 rounded-xl text-xs transition-all shadow-lg shadow-lime-400/20 flex items-center justify-center gap-2 cursor-pointer"
             >
               <Zap className="w-4 h-4" />
-              <span>تسجيل دخول مباشر بنقرة واحدة (تأكيد الحضور بالجيم)</span>
+              <span>تأكيد مسح كيو ار الصالة وتسجيل الحضور</span>
             </button>
 
             <button
@@ -195,7 +195,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
                 cleanupScanner();
                 onClose();
               }}
-              className="w-full py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-black uppercase tracking-wider transition-colors border border-white/5"
+              className="w-full py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-black uppercase tracking-wider transition-colors border border-white/5 cursor-pointer"
             >
               إغلاق
             </button>

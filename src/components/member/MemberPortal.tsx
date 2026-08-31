@@ -296,17 +296,17 @@ export const MemberPortal: React.FC<MemberPortalProps> = ({
           </div>
         </div>
 
-        {/* Action Buttons: 1-Tap Attendance & VIP Card */}
-        <div className="mt-5 pt-4 border-t border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Action Buttons: QR Scanner Only */}
+        <div className="mt-5 pt-4 border-t border-white/10">
           {isInsideNow ? (
-            <div className="bg-lime-400/15 border border-lime-400/30 p-3 rounded-2xl flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-lime-400 text-xs font-black">
-                <span className="w-2 h-2 rounded-full bg-lime-400 animate-ping" />
+            <div className="bg-lime-400/15 border border-lime-400/30 p-3.5 rounded-2xl flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 text-lime-400 text-xs sm:text-sm font-black">
+                <span className="w-2.5 h-2.5 rounded-full bg-lime-400 animate-ping" />
                 <span>أنت متواجد بالصالة الآن 💪</span>
               </div>
               <button
                 onClick={handleCheckOut}
-                className="px-3.5 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-xs font-black transition-colors"
+                className="px-4 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 text-white text-xs font-black transition-colors cursor-pointer"
               >
                 تسجيل الخروج
               </button>
@@ -315,20 +315,12 @@ export const MemberPortal: React.FC<MemberPortalProps> = ({
             <button
               id="btn-scan-reception-qr"
               onClick={() => setIsScannerOpen(true)}
-              className="bg-lime-400 hover:bg-lime-300 text-black font-black py-3.5 px-4 rounded-2xl text-xs sm:text-sm shadow-lg shadow-lime-400/20 transition-all flex items-center justify-center gap-2 active:scale-98 cursor-pointer"
+              className="w-full bg-lime-400 hover:bg-lime-300 text-black font-black py-4 px-6 rounded-2xl text-sm sm:text-base shadow-xl shadow-lime-400/20 transition-all flex items-center justify-center gap-3 active:scale-98 cursor-pointer group"
             >
-              <QrCode className="w-5 h-5" />
-              <span>تسجيل حضور بالصالة (Scan QR)</span>
+              <QrCode className="w-6 h-6 text-black group-hover:scale-110 transition-transform" />
+              <span>تصوير كيو ار الصالة لتسجيل الحضور (Scan Gym QR)</span>
             </button>
           )}
-
-          <button
-            onClick={() => setIsCardModalOpen(true)}
-            className="bg-zinc-900 hover:bg-zinc-800 text-white font-black py-3.5 px-4 rounded-2xl text-xs sm:text-sm border border-white/10 hover:border-lime-400 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-          >
-            <ShieldCheck className="w-5 h-5 text-lime-400" />
-            <span>عرض كارت العضوية الرقمي</span>
-          </button>
         </div>
       </div>
 
