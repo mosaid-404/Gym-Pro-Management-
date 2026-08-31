@@ -1,0 +1,6 @@
+{
+  "name": "Gym Pro Management | نظام إدارة الجيم الرياضي",
+  "description": "تطبيق إدارة الجيم وتتبع المشتركين تلقائياً بالباركود والكيو ار ومتابعة المتواجدين بالصالة والمزايا",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
