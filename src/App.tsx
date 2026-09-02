@@ -6,11 +6,13 @@
 import React, { useState, useEffect } from 'react';
 import { GymSettings, AuthSession, Member } from './types';
 import { storage } from './services/storage';
+import { updateDynamicBranding } from './services/branding';
 import { LoginPage } from './components/auth/LoginPage';
 import { Header } from './components/common/Header';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { MemberPortal } from './components/member/MemberPortal';
 import { ReceptionQRModal } from './components/common/ReceptionQRModal';
+import { InstallPwaPrompt } from './components/common/InstallPwaPrompt';
 
 export default function App() {
   const [settings, setSettings] = useState<GymSettings>(() => storage.getSettings());
@@ -18,6 +20,11 @@ export default function App() {
   const [inHallCount, setInHallCount] = useState<number>(() => storage.getCurrentInsideCount());
   const [isReceptionQROpen, setIsReceptionQROpen] = useState<boolean>(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Apply dynamic branding (document.title, dynamic favicon, meta tags, and dynamic web manifest blob)
+  useEffect(() => {
+    updateDynamicBranding(settings);
+  }, [settings]);
 
   // Sync data whenever triggered
   const refreshAll = () => {
@@ -81,6 +88,7 @@ export default function App() {
   const handleUpdateSettings = (newSettings: GymSettings) => {
     storage.saveSettings(newSettings);
     setSettings(newSettings);
+    updateDynamicBranding(newSettings);
   };
 
   return (
@@ -139,6 +147,9 @@ export default function App() {
           refreshAll();
         }}
       />
+
+      {/* Floating PWA Install Prompt Banner */}
+      <InstallPwaPrompt settings={settings} />
     </div>
   );
 }
